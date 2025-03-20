@@ -2,6 +2,7 @@ mod camera;
 mod state;
 mod vertex;
 mod instance;
+mod texture;
 
 use std::sync::Arc;
 use std::time::Instant;

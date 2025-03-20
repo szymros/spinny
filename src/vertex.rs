@@ -2,7 +2,7 @@
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub pos: [f32; 3],
-    pub color: [f32; 3],
+    pub tex_cords: [f32; 2],
 }
 
 impl Vertex {
@@ -17,7 +17,7 @@ impl Vertex {
                     shader_location: 0,
                 },
                 wgpu::VertexAttribute {
-                    format: wgpu::VertexFormat::Float32x3,
+                    format: wgpu::VertexFormat::Float32x2,
                     offset: std::mem::size_of::<[f32;3]>() as wgpu::BufferAddress,
                     shader_location: 1,
                 },
@@ -32,104 +32,104 @@ pub const VERTICES: &[Vertex] = &[
     //top
     Vertex {
         pos: [-1.0, -1.0, 1.0],
-        color: [1.0, 0.0, 0.0],
+        tex_cords: [0.3, 0.3],
     },
     Vertex {
         pos: [1.0, -1.0, 1.0],
-        color: [1.0, 0.0, 0.0],
+        tex_cords: [0.0, 0.5],
     },
     Vertex {
         pos: [1.0, 1.0, 1.0],
-        color: [1.0, 0.0, 0.0],
+        tex_cords: [0.2, 0.1 ],
     },
     Vertex {
         pos: [-1.0, 1.0, 1.0],
-        color: [1.0, 0.0, 0.0],
+        tex_cords: [0.0, 0.1],
     },
     // bot
     Vertex {
         pos: [-1.0, 1.0, -1.0],
-        color: [0.0, 1.0, 0.0],
+        tex_cords: [0.8, 0.2],
     },
     Vertex {
         pos: [1.0, 1.0, -1.0],
-        color: [0.0, 1.0, 0.0],
+        tex_cords: [0.0, 0.2],
     },
     Vertex {
         pos: [1.0, -1.0, -1.0],
-        color: [0.0, 1.0, 0.0],
+        tex_cords: [0.0, 0.0],
     },
     Vertex {
         pos: [-1.0, -1.0, -1.0],
-        color: [0.0, 1.0, 0.0],
+        tex_cords: [0.0, 0.0],
     },
     // right
     Vertex {
         pos: [1.0, -1.0, -1.0],
-        color: [0.0, 0.0, 1.0],
+        tex_cords: [0.0, 0.8],
     },
     Vertex {
         pos: [1.0, 1.0, -1.0],
-        color: [0.0, 0.0, 1.0],
+        tex_cords: [0.9, 0.0],
     },
     Vertex {
         pos: [1.0, 1.0, 1.0],
-        color: [0.0, 0.0, 1.0],
+        tex_cords: [0.2, 0.1],
     },
     Vertex {
         pos: [1.0, -1.0, 1.0],
-        color: [0.0, 0.0, 1.0],
+        tex_cords: [0.2, 0.1],
     },
     //left
     Vertex {
         pos: [-1.0, -1.0, 1.0],
-        color: [1.0, 0.0, 0.0],
+        tex_cords: [0.2, 0.1],
     },
     Vertex {
         pos: [-1.0, 1.0, 1.0],
-        color: [1.0, 0.0, 0.0],
+        tex_cords: [0.2, 0.0],
     },
     Vertex {
         pos: [-1.0, 1.0, -1.0],
-        color: [1.0, 0.0, 0.0],
+        tex_cords: [0.0, 0.0],
     },
     Vertex {
         pos: [-1.0, -1.0, -1.0],
-        color: [1.0, 0.0, 0.0],
+        tex_cords: [0.0, 0.0],
     },
     //front
     Vertex {
         pos: [1.0, 1.0, -1.0],
-        color: [0.0, 1.0, 0.0],
+        tex_cords: [0.0, 0.0],
     },
     Vertex {
         pos: [-1.0, 1.0, -1.0],
-        color: [0.0, 1.0, 0.0],
+        tex_cords: [0.0, 0.0],
     },
     Vertex {
         pos: [-1.0, 1.0, 1.0],
-        color: [0.0, 1.0, 0.0],
+        tex_cords: [0.0, 0.0],
     },
     Vertex {
         pos: [1.0, 1.0, 1.0],
-        color: [0.0, 1.0, 0.0],
+        tex_cords: [0.0, 0.0],
     },
     //back
     Vertex {
         pos: [1.0, -1.0, 1.0],
-        color: [0.0, 0.0, 1.0],
+        tex_cords: [0.0, 0.0],
     },
     Vertex {
         pos: [-1.0, -1.0, 1.0],
-        color: [0.0, 0.0, 1.0],
+        tex_cords: [0.0, 0.0],
     },
     Vertex {
         pos: [-1.0, -1.0, -1.0],
-        color: [0.0, 0.0, 1.0],
+        tex_cords: [0.0, 0.0],
     },
     Vertex {
         pos: [1.0, -1.0, -1.0],
-        color: [0.0, 0.0, 1.0],
+        tex_cords: [0.0, 0.0],
     },
 ];
 pub const INDICES: &[u16] = &[

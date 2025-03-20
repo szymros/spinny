@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use wgpu::core::instance;
+use wgpu::util::BufferInitDescriptor;
 use wgpu::util::DeviceExt;
-use wgpu::util::{self, BufferInitDescriptor};
 use winit::window::Window;
 
 use crate::instance::Instance;
+use crate::texture::Texture;
 use crate::vertex::Vertex;
 use crate::{
     camera::Camera,
@@ -21,14 +21,14 @@ pub struct State {
     pub surface_format: wgpu::TextureFormat,
     pub render_pipeline: wgpu::RenderPipeline,
     pub vertex_buffer: wgpu::Buffer,
-    pub bind_group: wgpu::BindGroup,
+    pub camera_bind_group: wgpu::BindGroup,
     pub camera_uniform: wgpu::Buffer,
     pub camera: Camera,
     pub index_buffer: wgpu::Buffer,
-    pub depth_texture: wgpu::Texture,
-    pub depth_texture_view: wgpu::TextureView,
-    pub sampler: wgpu::Sampler,
-    pub instance_buffer: wgpu::Buffer
+    pub instance_buffer: wgpu::Buffer,
+    pub depth_texture: Texture,
+    pub diffuse_texture: Texture,
+    pub diffuse_texture_bind_group: wgpu::BindGroup
 }
 
 impl State {
@@ -88,62 +88,74 @@ impl State {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: None,
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: wgpu::BufferSize::new(64),
-                },
-                count: None,
-            }],
-        });
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: wgpu::BufferSize::new(64),
+                    },
+                    count: None,
+                }],
+            });
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            layout: &bind_group_layout,
+            layout: &camera_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: camera_uniform.as_entire_binding(),
             }],
         });
 
-        let depth_texture_size = wgpu::Extent3d {
-            width: size.width.max(1),
-            height: size.height.max(1),
-            depth_or_array_layers: 1,
-        };
-        let depth_texture_descriptor = wgpu::TextureDescriptor {
+        let depth_texture = Texture::create_depth_texture(&device, size);
+
+        let diffuse_texture = Texture::load_texture(&device, &queue, "./assets/texture.jpg");
+        let diffuse_texture_bindgroup_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+            });
+
+        let diffuse_texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: None,
-            size: depth_texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Depth32Float,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
-            view_formats: &[],
-        };
-        let depth_texture = device.create_texture(&depth_texture_descriptor);
-        let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: None,
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Nearest,
-            lod_min_clamp: 0.0,
-            lod_max_clamp: 100.0,
-            compare: Some(wgpu::CompareFunction::LessEqual),
-            ..Default::default()
+            layout: &diffuse_texture_bindgroup_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.texture_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+            ],
         });
+
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
-                bind_group_layouts: &[&bind_group_layout],
+                bind_group_layouts: &[&camera_bind_group_layout,&diffuse_texture_bindgroup_layout],
                 push_constant_ranges: &[],
             });
 
@@ -192,14 +204,14 @@ impl State {
             surface_format,
             render_pipeline,
             vertex_buffer,
-            bind_group: camera_bind_group,
+            camera_bind_group,
             camera_uniform,
             camera,
             index_buffer,
+            instance_buffer,
             depth_texture,
-            depth_texture_view,
-            sampler,
-            instance_buffer
+            diffuse_texture,
+            diffuse_texture_bind_group
         };
         state.configure_surface();
 
@@ -246,7 +258,7 @@ impl State {
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                view: &self.depth_texture_view,
+                view: &self.depth_texture.texture_view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     store: wgpu::StoreOp::Store,
@@ -257,7 +269,8 @@ impl State {
             occlusion_query_set: None,
         });
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.diffuse_texture_bind_group, &[]);
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
