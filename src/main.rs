@@ -1,8 +1,12 @@
 mod camera;
-mod state;
-mod vertex;
 mod instance;
+mod layouts;
+mod light;
+mod model;
+mod state;
 mod texture;
+mod binding;
+mod vertex;
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -19,6 +23,7 @@ struct App {
     state: Option<State>,
     last_updated: Option<std::time::Instant>,
     delta_time: Option<f32>,
+    focused: Option<bool>,
 }
 
 impl App {
@@ -61,6 +66,7 @@ impl ApplicationHandler for App {
         self.state = Some(state);
         self.last_updated = Some(Instant::now());
         self.delta_time = Some(0.0);
+        self.focused = Some(true);
     }
 
     fn new_events(
@@ -89,6 +95,8 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             winit::event::WindowEvent::RedrawRequested => {
+                state.spin_teapots();
+                state.camera.update_view_matrix();
                 state.render();
                 state.window.request_redraw();
             }
@@ -101,6 +109,9 @@ impl ApplicationHandler for App {
                     },
                 ..
             } => self.input_handler(logical_key, self.delta_time.unwrap()),
+            winit::event::WindowEvent::Focused(focused) => {
+                self.focused = Some(focused);
+            }
             _ => (),
         }
     }
@@ -113,7 +124,9 @@ impl ApplicationHandler for App {
     ) {
         match event {
             winit::event::DeviceEvent::MouseMotion { delta } => {
-                self.mouse_hanlder(delta, self.delta_time.unwrap())
+                if self.focused.unwrap(){
+                    self.mouse_hanlder(delta, self.delta_time.unwrap())
+                }
             }
             _ => (),
         }
@@ -124,5 +137,5 @@ fn main() {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(winit::event_loop::ControlFlow::Poll);
     let mut app = App::default();
-    let _ =event_loop.run_app(&mut app);
+    let _ = event_loop.run_app(&mut app);
 }

@@ -1,5 +1,6 @@
 use winit::dpi::PhysicalSize;
 
+
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub texture_view: wgpu::TextureView,
@@ -7,11 +8,15 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn create_depth_texture(device: &wgpu::Device, size: PhysicalSize<u32>) -> Texture {
+    pub fn create_depth_texture(
+        device: &wgpu::Device,
+        size: PhysicalSize<u32>,
+        array_layers: u32,
+    ) -> Texture {
         let depth_texture_size = wgpu::Extent3d {
             width: size.width.max(1),
             height: size.height.max(1),
-            depth_or_array_layers: 1,
+            depth_or_array_layers: array_layers,
         };
         let depth_texture_descriptor = wgpu::TextureDescriptor {
             label: None,
@@ -24,7 +29,9 @@ impl Texture {
             view_formats: &[],
         };
         let depth_texture = device.create_texture(&depth_texture_descriptor);
-        let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let depth_texture_view = depth_texture.create_view(&wgpu::TextureViewDescriptor {
+            ..Default::default()
+        });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: None,
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -45,8 +52,27 @@ impl Texture {
         };
     }
 
-    pub fn load_texture(device: &wgpu::Device, queue: &wgpu::Queue, path: &str) -> Texture {
-        let image_rgba = image::open(path).unwrap().to_rgba8();
+    pub fn create_cube_depth_texture(device: &wgpu::Device, size: PhysicalSize<u32>) -> Texture{
+        let mut cube_depth_texture = Texture::create_depth_texture(device, size, 6);
+        cube_depth_texture.texture_view =
+            cube_depth_texture
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor {
+                    format: Some(cube_depth_texture.texture.format()),
+                    dimension: Some(wgpu::TextureViewDimension::Cube),
+                    aspect: wgpu::TextureAspect::DepthOnly,
+                    base_array_layer: 0,
+                    array_layer_count: Some(6),
+                    ..Default::default()
+                });
+        return cube_depth_texture;
+    }
+
+    pub fn load_texture(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        image_rgba: &image::RgbaImage,
+    ) -> Texture {
         let dimensions = image_rgba.dimensions();
 
         let texture_size = wgpu::Extent3d {
@@ -97,4 +123,14 @@ impl Texture {
             sampler,
         };
     }
+
+    pub fn create_solid_color_texture(
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        rgba: [u8; 4],
+    ) -> Texture {
+        let image_rgba = image::RgbaImage::from_fn(8, 8, |_, _| image::Rgba(rgba));
+        return Texture::load_texture(device, queue, &image_rgba);
+    }
 }
+
